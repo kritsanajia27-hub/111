@@ -1,0 +1,5 @@
+{
+  "name": "GradeWizard Pro",
+  "description": "A professional grade management system handling student data, score calculation, and automated grading with Excel import/export capabilities.",
+  "requestFramePermissions": []
+}
