@@ -1,20 +1,74 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+  <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# GradeWizard Pro – เว็บแอปจัดการรายชื่อนักเรียน คำนวณคะแนน และตัดเกรด
 
-This contains everything you need to run your app locally.
+แอปนี้ออกแบบมาเพื่อช่วยครูสร้างเทมเพลต Excel, นำเข้าคะแนน, แก้ไขข้อมูล, คำนวณคะแนนรวม + เกรดอัตโนมัติ และส่งออกไฟล์ผลลัพธ์ใหม่ได้ในที่เดียว (Frontend + Backend พร้อมโค้ดตัวอย่าง).
 
-View your app in AI Studio: https://ai.studio/apps/drive/1Ece-KVuMV9ZrhGo0U3cqWO6JQzJjz3LU
+## โครงสร้างโปรเจกต์
+```
+├── App.tsx                # หน้าหลักของ React/Vite
+├── components/            # ตารางนักเรียน, การ์ดสถิติ, กราฟแจกแจงเกรด
+├── constants.ts           # ค่าคะแนนสูงสุดและชื่อคอลัมน์ Excel
+├── services/excelService.ts# ฟังก์ชันฝั่ง Frontend สำหรับโหลด/อ่าน/ส่งออก Excel
+├── utils/calculation.ts   # ฟังก์ชันคำนวณคะแนนรวมและเกรด
+├── server/index.js        # โค้ด Backend (Node.js + Express + xlsx)
+├── types.ts               # ชนิดข้อมูล Student และสถิติ
+└── vite.config.ts         # ตั้งค่า Vite
+```
 
-## Run Locally
+## เกณฑ์คะแนนและการตัดเกรด
+- ส่วนคะแนน: เก็บก่อนกลางภาค 30, เก็บหลังกลางภาค 20, สอบกลางภาค 20, สอบปลายภาค 30 (เต็ม 100)
+- การให้เกรด: ≥80=4, 75–79=3.5, 70–74=3, 65–69=2.5, 60–64=2, 55–59=1.5, 50–54=1, <50=0 (มีหมายเหตุ “ตก” อัตโนมัติเมื่อเกรด=0)
 
-**Prerequisites:**  Node.js
+## Backend (Node.js + Express + xlsx)
+ไฟล์ตัวอย่างอยู่ที่ `server/index.js` รองรับการสร้างเทมเพลต, อัปโหลดไฟล์, ประมวลผลคะแนน, และส่งออกผลลัพธ์ใหม่
 
+### Endpoints สำคัญ
+- `GET /api/template` ดาวน์โหลดไฟล์ Excel เทมเพลต (หัวตาราง: รหัสนักเรียน, ชื่อ–สกุล, คะแนนเก็บก่อน/หลัง, สอบกลาง/ปลาย)
+- `POST /api/upload` อัปโหลดไฟล์ Excel (field: `file`) อ่านข้อมูล, คำนวณคะแนนรวม+เกรด, ส่งกลับ `{ students: [...] }`
+- `POST /api/export` ส่ง JSON `{ students }` เพื่อสร้างไฟล์ผลลัพธ์ (รหัส, ชื่อ–สกุล, คะแนนรวม, เกรด, หมายเหตุ)
+- `GET /api/health` ตรวจสอบสถานะเซิร์ฟเวอร์
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### การคำนวณ
+โค้ดในเซิร์ฟเวอร์จะตรวจสอบและบีบคะแนนให้อยู่ในช่วงสูงสุดแต่ละหมวด, รวมคะแนน, และตัดเกรดด้วยเกณฑ์เดียวกับฝั่ง UI เพื่อป้องกันข้อมูลผิดรูปแบบเมื่ออัปโหลด
+
+## Frontend (React + Vite)
+หน้าหลัก (`App.tsx`) เชื่อมกับ `services/excelService.ts` เพื่อ:
+- ปุ่ม **Download Template**: เรียก `generateTemplate()` สร้างไฟล์ตัวอย่างพร้อมหัวตารางที่กำหนด
+- ปุ่ม **Import Excel**: `parseExcelFile(file)` อ่านไฟล์, ตรวจสอบข้อมูล, คำนวณคะแนนรวม+เกรด แล้วแสดงในตารางแก้ไขได้ทันที
+- ตาราง **StudentTable**: แก้ไขคะแนนรายคนบนหน้าเว็บแล้วคำนวณใหม่แบบเรียลไทม์
+- ปุ่ม **Export ผลลัพธ์**: `exportResults(students)` ส่งออกไฟล์ Excel ที่มีคะแนนรวม, เกรด, และหมายเหตุ
+- Dashboard/Chart: แสดงสถิติรวมและกราฟการกระจายเกรดด้วย `StatsDashboard` และ `GradeChart`
+
+## วิธีรัน (ท้องถิ่น)
+1) ติดตั้ง dependencies (ต้องมี Node.js)
+```bash
+npm install
+```
+> หากเจอข้อจำกัดเครือข่าย ให้ติดตั้งในสภาพแวดล้อมที่เข้าถึง npm ได้แล้วคัดลอก `node_modules` กลับมา หรือใช้ Proxy ภายในองค์กร
+
+2) รัน Backend (พอร์ต 4000)
+```bash
+npm run server
+```
+
+3) รัน Frontend (Vite dev server)
+```bash
+npm run dev
+```
+เปิดเบราว์เซอร์ที่ลิงก์ที่ Vite แจ้ง (เช่น http://localhost:5173)
+
+> เมื่อดีพลอยจริง แนะนำให้ชี้ปุ่ม Template/Import/Export ให้เรียก API บน `/api/*` ของฝั่งเซิร์ฟเวอร์ที่เปิดผ่าน Reverse Proxy (เช่น Nginx) เพื่อใช้ทรัพยากรเครื่องเซิร์ฟเวอร์ในการอ่าน/เขียน Excel
+
+## Deploy
+- **Frontend**: สร้างไฟล์สแตติกด้วย `npm run build` แล้วนำไฟล์ใน `dist/` ไปวางบน Static Hosting เช่น Vercel/Netlify/CloudFront
+- **Backend**: รัน `node server/index.js` บนเซิร์ฟเวอร์ที่มี Node.js (หรือแปลงเป็น Docker container) แล้วเปิดเส้นทาง `/api/*` ให้ Frontend เรียก
+
+## แนวทางปรับปรุงในอนาคต
+- เพิ่มฟิลด์นักเรียน (ห้อง/เลขที่) และบันทึกลงฐานข้อมูล (MongoDB/PostgreSQL)
+- ใช้ JWT + HTTPS ปกป้อง API เมื่อต้องใช้งานจริง
+- เพิ่มการตรวจสอบข้อมูล (เช่น คะแนนเกินเพดาน, ชื่อซ้ำ) และระบบบันทึกประวัติการแก้ไข
+- ปรับ UI ให้เชื่อม API ฝั่งเซิร์ฟเวอร์แทนการประมวลผลบนเบราว์เซอร์เมื่อไฟล์ใหญ่
+- เพิ่มเทมเพลตหลายรูปแบบ (เช่น ทศนิยม, คะแนนพิเศษ) และระบบ Import หลายชีต
